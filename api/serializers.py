@@ -7,7 +7,8 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = '__all__'
+        # fields = '__all__'
+        exclude = ['watchlist']
 
 
 class WatchListSerializer(serializers.ModelSerializer):
@@ -16,20 +17,26 @@ class WatchListSerializer(serializers.ModelSerializer):
         model = Watchlist
         fields = '__all__'
 
-    # data format is like this
-#     {
-#     "id": 1,
-#     "name": "Inception",
-#     "storyline": "A mind-bending thriller about dreams within dreams.",
-#     "active": true,
-#     "created": "2024-11-06T12:34:56Z"
-#      }
     
 class StreamPlatformSerializer(serializers.ModelSerializer):
     watchlist = WatchListSerializer(many=True, read_only=True)
     class Meta:
         model = StreamPlatform
         fields = '__all__'
+    def update(self, instance, validated_data):
+        # Handle nested objects (like watchlist) during update
+        watchlist_data = validated_data.pop('watchlist', [])
+        # Update the parent object (StreamPlatform)
+        instance = super().update(instance, validated_data)
+        
+        # Handle nested watchlist updates
+        for item_data in watchlist_data:
+            watchlist_item = Watchlist.objects.get(id=item_data.get('id'))
+            watchlist_item.storyline = item_data.get('storyline', watchlist_item.storyline)
+            watchlist_item.save()
+        
+        return instance
+
 
 
 

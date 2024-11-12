@@ -7,16 +7,16 @@ from .models import *
 from rest_framework import mixins
 from .serializers import *
 from rest_framework.exceptions import ValidationError
+from rest_framework import viewsets
 
 
-class Reviewcreate(mixins.CreateModelMixin, generics.ListAPIView):
+class Reviewcreate(generics.CreateAPIView):
     serializer_class = ReviewSerializer
-    queryset = Review.objects.all()
-
     def perform_create(self, serializer):
         pk = self.kwargs.get("pk")
         watchlist = Watchlist.objects.get(pk=pk)
         serializer.save(watchlist=watchlist)
+
     
 
 class ReviewList(generics.ListCreateAPIView):
@@ -79,6 +79,58 @@ class WatchDetails(APIView):
    
 
 
+
+
+class StreamPlatformViewSet(viewsets.ModelViewSet):
+    queryset = StreamPlatform.objects.all()
+    serializer_class = StreamPlatformSerializer
+
+    def list(self, request, *args, **kwargs):
+        movies = self.get_queryset()
+        serializer = self.get_serializer(movies, many=True)
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        movie = get_object_or_404(StreamPlatform, pk=pk)
+        serializer = self.get_serializer(movie)
+        return Response(serializer.data)
+
+    def update(self, request, pk=None, *args, **kwargs):
+        """
+        Handle PUT requests (complete update).
+        Replace the entire resource with the provided data.
+        """
+        movie = get_object_or_404(StreamPlatform, pk=pk)
+        serializer = self.get_serializer(movie, data=request.data)
+        if serializer.is_valid():
+            serializer.save()  # This will replace the entire object
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def partial_update(self, request, pk=None, *args, **kwargs):
+        """
+        Handle PATCH requests (partial update).
+        Update only the fields provided in the request.
+        """
+        movie = get_object_or_404(Watchlist, pk=pk)
+        serializer = self.get_serializer(movie, data=request.data, partial=True)  # `partial=True` allows partial updates
+        if serializer.is_valid():
+            serializer.save()  # This will only update the fields provided in the request
+            return Response(serializer.data)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        movie = get_object_or_404(StreamPlatform, pk=pk)
+        movie.delete()
+        return Response({'message': 'Movie deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
 class StreamPlatformList(APIView):
 
     def get(self, request):
