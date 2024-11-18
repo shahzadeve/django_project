@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from .models import Watchlist, StreamPlatform, Review
 from .serializers import WatchListSerializer, StreamPlatformSerializer, ReviewSerializer
 from .permissions import AdminOrOwnerOnly
+from rest_framework.permissions import IsAuthenticated
 
 
 class WatchListView(generics.ListCreateAPIView):
@@ -14,6 +15,8 @@ class WatchListView(generics.ListCreateAPIView):
     """
     queryset = Watchlist.objects.all()
     serializer_class = WatchListSerializer
+    
+
 
     def delete(self, request, pk):
         watch_item = get_object_or_404(Watchlist, pk=pk)
@@ -43,12 +46,29 @@ class ReviewCreateView(generics.CreateAPIView):
     Handles the creation of new reviews for a specific watchlist item.
     """
     serializer_class = ReviewSerializer
-    permission_classes = [AdminOrOwnerOnly]
+    permission_classes = [IsAuthenticated]
+
+
+    def get_queryset(self):
+        return Review.objects.all()
 
     def perform_create(self, serializer):
         pk = self.kwargs.get("pk")
         watchlist = get_object_or_404(Watchlist, pk=pk)
-        serializer.save(watchlist=watchlist)
+
+        if Review.objects.filter(watchlist=watchlist , user=self.request.user ).exists():
+            raise ValidationError("Review already exists for this watchlist.")
+        
+        if watchlist.number_rating == 0:
+            watchlist.avg_rating = serializer.validated_data['rating']
+        else:
+            watchlist.avg_rating = (watchlist.avg_rating + serializer.validated_data['rating']) / (watchlist.number_rating + 1)
+        watchlist.number_rating += 1
+        watchlist.save()
+
+        serializer.save(watchlist=watchlist , user=self.request.user)
+
+          
 
 
 class ReviewListView(generics.ListCreateAPIView):
@@ -56,7 +76,7 @@ class ReviewListView(generics.ListCreateAPIView):
     Handles listing and creating reviews for a specific watchlist item.
     """
     serializer_class = ReviewSerializer
-    permission_classes = [AdminOrOwnerOnly]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         pk = self.kwargs['pk']
@@ -74,4 +94,4 @@ class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [AdminOrOwnerOnly]
+    permission_classes = [IsAuthenticated]

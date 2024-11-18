@@ -25,6 +25,12 @@ class StreamPlatformAdmin(admin.ModelAdmin):
 
 @admin.register(Watchlist)
 class WatchlistAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'storyline', 'platform', 'active', 'created')
+    list_display = ('id', 'name', 'storyline', 'platform', 'get_avg_rating', 'created')
     list_display_links = ('id', 'name')
     search_fields = ('name', 'storyline')
+
+    def get_avg_rating(self, obj):
+        return f"{obj.avg_rating:.1f}"  # Format to 1 decimal place
+
+    get_avg_rating.short_description = 'Average Rating'  # Label for the column
+
