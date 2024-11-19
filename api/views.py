@@ -5,8 +5,11 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from .models import Watchlist, StreamPlatform, Review
 from .serializers import WatchListSerializer, StreamPlatformSerializer, ReviewSerializer
-from .permissions import AdminOrOwnerOnly
+from .permissions import AdminOrOwnerOnly , IsAuthenticatedOrReadOnly , IsAdmin , IsReviewOwner
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS
+
+
 
 
 class WatchListView(generics.ListCreateAPIView):
@@ -88,10 +91,20 @@ class ReviewListView(generics.ListCreateAPIView):
         serializer.save(watchlist=watchlist)
 
 
+
+
+
 class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     Handles retrieving, updating, and deleting a specific review.
     """
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "DELETE":
+            return [IsAdmin() | IsReviewOwner()]  # Combine both permissions
+        elif self.request.method in SAFE_METHODS:  # Read-only methods
+            return []
+        return [IsAuthenticated()]  # For update or other non-safe methods
+
